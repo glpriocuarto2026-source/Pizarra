@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Pizarra Operativa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: #f0f2f5; }
+body { font-family: 'Inter', system-ui, sans-serif; min-height: 100vh; padding: 0 0 3rem; color: #1a1d23; }
+
+/* ── TOPBAR ── */
+.topbar { background: #1c2b3a; position: sticky; top: 0; z-index: 100; padding: 0 20px; }
+.topbar-inner { max-width: 1300px; margin: 0 auto; height: 56px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand-stripe { width: 4px; height: 32px; background: #3b9eff; border-radius: 2px; flex-shrink: 0; }
+.brand-title { font-size: 14px; font-weight: 600; color: #fff; letter-spacing: .03em; }
+.brand-sub { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #7a9bb5; letter-spacing: .08em; margin-top: 2px; }
+#clock { font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 600; color: #f5a623; }
+.live-badge { display: flex; align-items: center; gap: 6px; font-size: 10px; font-family: 'JetBrains Mono', monospace; color: #9ca3af; transition: color .3s; }
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: #9ca3af; flex-shrink: 0; transition: background .3s, box-shadow .3s; }
+.live-badge.on { color: #4ade80; }
+.live-badge.on .live-dot { background: #4ade80; box-shadow: 0 0 0 3px rgba(74,222,128,.2); animation: blink 2s ease-in-out infinite; }
+.live-badge.err { color: #f87171; }
+.live-badge.err .live-dot { background: #f87171; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+/* ── CONTENIDO ── */
+.content { max-width: 1300px; margin: 0 auto; padding: 14px 20px 0; }
+
+/* ── TABS ── */
+.tabs { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+.tab { font-size: 11px; font-weight: 500; padding: 5px 14px; border-radius: 6px; cursor: pointer; border: 1px solid #d1d5db; background: #fff; color: #6b7280; transition: all .15s; }
+.tab:hover { border-color: #3b9eff; color: #1a5fad; }
+.tab.all.act { border-color: #f5a623; background: #fff8ec; color: #b45309; font-weight: 600; }
+.tab.act { border-color: #3b9eff; background: #e8f3ff; color: #1a5fad; font-weight: 600; }
+
+/* ── STATS ── */
+.stats { display: flex; gap: 8px; margin-bottom: 12px; }
+.stat { flex: 1; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px 12px; border-top: 3px solid #3b9eff; }
+.stat.s2 { border-top-color: #f5a623; }
+.stat.s3 { border-top-color: #4ade80; }
+.stat-val { font-size: 20px; font-weight: 700; color: #1c2b3a; }
+.stat-lbl { font-size: 10px; color: #9ca3af; margin-top: 2px; text-transform: uppercase; letter-spacing: .06em; }
+
+/* ── GRID ── */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; }
+.grid.solo { grid-template-columns: 1fr; max-width: 640px; }
+
+/* ── CIA CARD ── */
+.cia { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; animation: fu .3s ease both; }
+@keyframes fu { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+.cia-hdr { padding: 9px 14px; display: flex; align-items: center; gap: 10px; background: #1c2b3a; border-bottom: 3px solid #3b9eff; }
+.cia-num { font-size: 20px; font-weight: 700; color: #3b9eff; font-family: 'JetBrains Mono', monospace; }
+.cia-info { flex: 1; }
+.cia-name { font-size: 12px; font-weight: 600; color: #fff; }
+.cia-sub { font-size: 10px; color: #7a9bb5; margin-top: 1px; }
+.cia-pill { font-size: 10px; font-family: 'JetBrains Mono', monospace; font-weight: 600; background: #2d4a63; color: #7ec8ff; padding: 3px 8px; border-radius: 12px; white-space: nowrap; }
+
+/* ── SECCIÓN ── */
+.sec { border-top: 1px solid #f3f4f6; }
+.sec-hdr { display: flex; align-items: center; gap: 8px; padding: 6px 12px; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; border-bottom: 1px solid; }
+.sec-ico { font-size: 12px; }
+.dist .sec-hdr { background: #eef4ff; color: #1a5fad; border-bottom-color: #bfdbfe; }
+.ops  .sec-hdr { background: #fff8ec; color: #92400e; border-bottom-color: #fde68a; }
+.fuel .sec-hdr { background: #f0fdf4; color: #166534; border-bottom-color: #bbf7d0; }
+
+/* ── TABLA ── */
+.tbl { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.tbl th { font-family: 'JetBrains Mono', monospace; font-size: 9px; text-transform: uppercase; letter-spacing: .1em; color: #9ca3af; padding: 5px 10px; background: #fafafa; border-bottom: 1px solid #f0f0f0; text-align: left; }
+.tbl td { padding: 5px 10px; font-size: 11px; border-bottom: 1px solid #f6f7f9; color: #374151; vertical-align: middle; transition: background .4s; }
+.tbl tr:last-child td { border-bottom: none; }
+.tbl tr:hover td { background: #f9fafb; }
+
+/* ── ALERTAS EN DISTRIBUCIÓN ── */
+.row-ops-now  td { background: #fff3cd !important; }
+.row-ops-now  td:first-child { border-left: 3px solid #e67e00; padding-left: 7px; }
+.row-ops-prox td { background: #fffbeb !important; }
+.row-ops-prox td:first-child { border-left: 3px solid #f5a623; padding-left: 7px; }
+.row-fuel-now  td { background: #dcfce7 !important; }
+.row-fuel-now  td:first-child { border-left: 3px solid #16a34a; padding-left: 7px; }
+.row-fuel-prox td { background: #f0fdf4 !important; }
+.row-fuel-prox td:first-child { border-left: 3px solid #4ade80; padding-left: 7px; }
+
+/* ── TAGS ── */
+.tag { display: inline-flex; align-items: center; gap: 3px; font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 10px; margin-left: 5px; white-space: nowrap; vertical-align: middle; font-family: 'JetBrains Mono', monospace; animation: tagpop .3s ease; }
+@keyframes tagpop { from{opacity:0;transform:scale(.8)} to{opacity:1;transform:scale(1)} }
+.tag-ops-now   { background: #fb923c; color: #7c2d12; }
+.tag-ops-prox  { background: #fde68a; color: #92400e; }
+.tag-fuel-now  { background: #4ade80; color: #14532d; }
+.tag-fuel-prox { background: #bbf7d0; color: #14532d; }
+
+/* ── BADGES ── */
+.bh { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; background: #fff8ec; color: #92400e; border: 1px solid #fcd34d; padding: 2px 5px; border-radius: 4px; white-space: nowrap; display: inline-block; }
+.ba { font-family: 'JetBrains Mono', monospace; font-size: 9px; background: #f0fdf4; color: #166534; border: 1px solid #86efac; padding: 1px 5px; border-radius: 4px; white-space: nowrap; display: inline-block; margin: 1px 2px 1px 0; }
+.hora { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; color: #92400e; }
+.fuel .hora { color: #166534; }
+.fuel .bh { background: #f0fdf4; color: #166534; border-color: #86efac; }
+.sector { font-size: 11px; color: #374151; line-height: 1.35; }
+
+/* ── ESTADOS VACÍOS ── */
+.empty { padding: 12px; text-align: center; font-size: 10px; color: #d1d5db; font-style: italic; }
+.loader { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 40px; font-size: 13px; color: #9ca3af; grid-column: 1/-1; }
+.spinner { width: 18px; height: 18px; border: 2px solid #e5e7eb; border-top-color: #3b9eff; border-radius: 50%; animation: spin .7s linear infinite; }
+@keyframes spin { to{transform:rotate(360deg)} }
+
+/* ── LEYENDA ── */
+.leyenda { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; padding: 8px 12px; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; }
+.ley-item { display: flex; align-items: center; gap: 5px; font-size: 10px; color: #6b7280; }
+.ley-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+
+/* ── FOOTER ── */
+.footer { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-top: 12px; padding-top: 10px; border-top: 1px solid #e5e7eb; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #9ca3af; }
+#sync-lbl.fresh { color: #4ade80; }
+
+@media (max-width: 520px) {
+  .grid { grid-template-columns: 1fr; }
+  .stats { flex-wrap: wrap; }
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════ CONFIGURACIÓN ══════════════════════
+  Solo modificá la URL si redesplegás el Apps Script       -->
+<script>
+  const API_URL       = "https://script.google.com/macros/s/AKfycbxtwupcRTcvMOOxX0QH1gwJI1qxmDa1sH2ib3DtchQLQynRArFLarioeGgloWHRRxQ_2A/exec";
+  const POLL_MS       = 30000;   // refresco de datos (ms)
+  const COMPANIAS     = ["C1","C2","C3","C4"];
+  const PROX_MIN      = 30;      // minutos antes para mostrar alerta "próximo"
+</script>
+<!-- ════════════════════════════════════════════════════ -->
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <div class="brand-stripe"></div>
+      <div>
+        <div class="brand-title">Pizarra Operativa</div>
+        <div class="brand-sub">DISTRIBUCIÓN · TIEMPO REAL</div>
+      </div>
+    </div>
+    <div id="clock">--:--:--</div>
+    <div class="live-badge" id="live-badge">
+      <span class="live-dot"></span>
+      <span id="live-txt">ESPERANDO</span>
+    </div>
+  </div>
+</div>
+
+<div class="content">
+  <div class="tabs" id="tabs"></div>
+
+  <div class="stats">
+    <div class="stat">   <div class="stat-val" id="s-mov">—</div><div class="stat-lbl">Móviles activos</div></div>
+    <div class="stat s2"><div class="stat-val" id="s-ops">—</div><div class="stat-lbl">Operativos prog.</div></div>
+    <div class="stat s3"><div class="stat-val" id="s-fuel">—</div><div class="stat-lbl">Recargas prog.</div></div>
+  </div>
+
+  <div class="grid" id="grid">
+    <div class="loader"><span class="spinner"></span>Cargando datos operativos…</div>
+  </div>
+
+  <div class="leyenda">
+    <div class="ley-item"><div class="ley-dot" style="background:#fb923c"></div>Operativo en curso</div>
+    <div class="ley-item"><div class="ley-dot" style="background:#fde68a"></div>Operativo próximo (30 min)</div>
+    <div class="ley-item"><div class="ley-dot" style="background:#4ade80"></div>Recarga en curso</div>
+    <div class="ley-item"><div class="ley-dot" style="background:#bbf7d0"></div>Recarga próxima (30 min)</div>
+  </div>
+
+  <div class="footer">
+    <span>Actualización automática cada 30 s</span>
+    <span id="sync-lbl">—</span>
+  </div>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════
+   ESTADO GLOBAL
+══════════════════════════════════════════════ */
+let data = {}, activeTab = "ALL";
+
+/* ══════════════════════════════════════════════
+   RELOJ — se actualiza cada segundo
+══════════════════════════════════════════════ */
+function tick() {
+  const n = new Date();
+  document.getElementById("clock").textContent =
+    pad(n.getHours()) + ":" + pad(n.getMinutes()) + ":" + pad(n.getSeconds());
+}
+function pad(n){ return String(n).padStart(2,"0"); }
+tick();
+setInterval(tick, 1000);
+
+// Cada minuto re-renderiza para que las alertas se actualicen
+setInterval(() => { if (Object.keys(data).length) render(); }, 60000);
+
+/* ══════════════════════════════════════════════
+   BADGE
+══════════════════════════════════════════════ */
+function setBadge(state, msg) {
+  const el = document.getElementById("live-badge");
+  const tx = document.getElementById("live-txt");
+  el.className = "live-badge";
+  if (state === "on")  { el.classList.add("on");  tx.textContent = "EN VIVO"; }
+  if (state === "err") { el.classList.add("err"); tx.textContent = msg || "ERROR"; }
+  if (state === "...")  { tx.textContent = "ACTUALIZANDO…"; }
+}
+
+/* ══════════════════════════════════════════════
+   FETCH DE DATOS
+══════════════════════════════════════════════ */
+async function fetchData() {
+  setBadge("...");
+  try {
+    const res  = await fetch(API_URL + "?_=" + Date.now());
+    const json = await res.json();
+    if (json.error) throw new Error(json.error);
+    data = json;
+    buildTabs();
+    render();
+    setBadge("on");
+    updateStats();
+    const d = new Date(json.updatedAt || Date.now());
+    const el = document.getElementById("sync-lbl");
+    el.textContent = "Última sync: " + d.toLocaleTimeString("es-AR", { hour12: false });
+    el.classList.add("fresh");
+    setTimeout(() => el.classList.remove("fresh"), 3000);
+  } catch(err) {
+    setBadge("err", err.message.slice(0,40));
+    document.getElementById("sync-lbl").textContent = "Error de conexión";
+  }
+}
+
+/* ══════════════════════════════════════════════
+   STATS
+══════════════════════════════════════════════ */
+function updateStats() {
+  const nm = nowMin();
+  if (activeTab === "ALL") {
+    const halconesSet = new Set();
+    COMPANIAS.forEach(id => {
+      const d = data[id];
+      if (!d) return;
+      (d.moviles || []).forEach(r => halconesSet.add(r.halcon));
+    });
+    document.getElementById("s-mov").textContent  = halconesSet.size;
+    document.getElementById("s-ops").textContent  = "—";
+    document.getElementById("s-fuel").textContent = "—";
+  } else {
+    const d = data[activeTab];
+    if (!d) return;
+    const opsPend  = (d.operativos || []).filter(r => toMin(cleanHora(r.hora)) > nm).length;
+    const fuelPend = (d.recargas   || []).filter(r => toMin(cleanHora(r.hora)) > nm).length;
+    document.getElementById("s-mov").textContent  = (d.moviles || []).length;
+    document.getElementById("s-ops").textContent  = opsPend;
+    document.getElementById("s-fuel").textContent = fuelPend;
+  }
+}
+
+/* ══════════════════════════════════════════════
+   TABS
+══════════════════════════════════════════════ */
+function buildTabs() {
+  const c = document.getElementById("tabs");
+  c.innerHTML = "";
+  mkTab(c, "ALL", "Todas", "tab all");
+  COMPANIAS.forEach(id => mkTab(c, id, "Compañía " + id, "tab"));
+}
+function mkTab(c, id, label, cls) {
+  const b = document.createElement("button");
+  b.className = cls + (activeTab === id ? " act" : "");
+  b.textContent = label;
+  b.onclick = () => { activeTab = id; buildTabs(); render(); updateStats(); };
+  c.appendChild(b);
+}
+
+/* ══════════════════════════════════════════════
+   RENDER PRINCIPAL
+══════════════════════════════════════════════ */
+function render() {
+  const wrap = document.getElementById("grid");
+  const cols = activeTab === "ALL" ? COMPANIAS : [activeTab];
+  wrap.className = "grid" + (cols.length === 1 ? " solo" : "");
+  wrap.innerHTML = "";
+  cols.forEach((id, i) => {
+    const card = mkCard(id, data[id] || { moviles:[], operativos:[], recargas:[] });
+    card.style.animationDelay = (i * 60) + "ms";
+    wrap.appendChild(card);
+  });
+}
+
+/* ══════════════════════════════════════════════
+   LÓGICA DE ALERTAS HORARIAS
+   Compara la hora actual con cada evento
+══════════════════════════════════════════════ */
+function cleanHora(t) {
+  const s = String(t || "");
+  // Si viene como fecha completa de JS, extraer HH:MM
+  if (s.includes("GMT")) {
+    const m = s.match(/(\d{2}):(\d{2}):\d{2} GMT/);
+    if (m) return m[1] + ":" + m[2];
+  }
+  return s;
+}
+function toMin(t) {
+  const parts = cleanHora(t).split(":");
+  return parseInt(parts[0] || 0) * 60 + parseInt(parts[1] || 0);
+}
+function nowMin() {
+  const n = new Date();
+  return n.getHours() * 60 + n.getMinutes();
+}
+
+// Retorna: { cls, tagCls, tagTxt } o null
+function getAlerta(halcon, operativos, recargas) {
+  const nm = nowMin();
+
+  for (const ev of (operativos || [])) {
+    if (ev.halcon !== halcon) continue;
+    const em   = toMin(ev.hora);
+    const diff = em - nm;
+    if (diff === 0)                   return { cls:"row-ops-now",  tagCls:"tag-ops-now",  tagTxt:"▶ EN OPERATIVO" };
+    if (diff > 0 && diff <= 10)       return { cls:"row-ops-prox", tagCls:"tag-ops-prox", tagTxt:"⏱ OP. EN " + diff + " min" };
+  }
+
+  for (const ev of (recargas || [])) {
+    if (ev.halcon !== halcon) continue;
+    const em   = toMin(ev.hora);
+    const diff = em - nm;
+    if (diff === 0)                   return { cls:"row-fuel-now",  tagCls:"tag-fuel-now",  tagTxt:"⛽ EN RECARGA" };
+    if (diff > 0 && diff <= 10)       return { cls:"row-fuel-prox", tagCls:"tag-fuel-prox", tagTxt:"⏱ RECARGA EN " + diff + " min" };
+  }
+
+  return null;
+}
+
+/* ══════════════════════════════════════════════
+   CONSTRUCCIÓN DE CARD
+══════════════════════════════════════════════ */
+function mkCard(id, d) {
+  const dist = d.moviles || [];
+  const ops  = d.operativos   || [];
+  const fuel = d.recargas     || [];
+
+  const distRows = dist.map(function(r) {
+    const alerta  = getAlerta(r.halcon, ops, fuel);
+    const tagHtml = alerta ? '<span class="tag ' + alerta.tagCls + '">' + esc(alerta.tagTxt) + '</span>' : "";
+    return '<tr class="' + (alerta ? alerta.cls : '') + '">'
+      + '<td style="width:52px"><span class="bh">' + esc(r.halcon) + '</span></td>'
+      + '<td><span class="sector">' + esc(r.sector) + '</span>' + tagHtml + '</td>'
+      + '<td style="width:36%">' + (r.agentes||[]).map(function(a){ return '<span class="ba">' + esc(a) + '</span>'; }).join("") + '</td>'
+      + '</tr>';
+  }).join("");
+
+  const opsRows = ops.map(function(r) {
+    const nm = nowMin(), em = toMin(cleanHora(r.hora)), diff = em - nm;
+    var rowCls = '', tagHtml = '';
+    if (diff === 0)                  { rowCls = 'row-ops-now';  tagHtml = '<span class="tag tag-ops-now">▶ EN OPERATIVO</span>'; }
+    else if (diff > 0 && diff <= 10){ rowCls = 'row-ops-prox'; tagHtml = '<span class="tag tag-ops-prox">⏱ EN ' + diff + ' min</span>'; }
+    return '<tr class="' + rowCls + '">'
+      + '<td style="width:54px"><span class="hora">' + esc(cleanHora(r.hora)) + '</span></td>'
+      + '<td style="width:54px"><span class="bh">' + esc(r.halcon) + '</span></td>'
+      + '<td><span class="sector">' + esc(r.lugar) + '</span>' + tagHtml + '</td>'
+      + '</tr>';
+  }).join("");
+
+  const fuelRows = fuel.map(function(r) {
+    const nm = nowMin(), em = toMin(cleanHora(r.hora)), diff = em - nm;
+    var rowCls = '', tagHtml = '';
+    if (diff === 0)                  { rowCls = 'row-fuel-now';  tagHtml = '<span class="tag tag-fuel-now">⛽ EN RECARGA</span>'; }
+    else if (diff > 0 && diff <= 10){ rowCls = 'row-fuel-prox'; tagHtml = '<span class="tag tag-fuel-prox">⏱ EN ' + diff + ' min</span>'; }
+    return '<tr class="' + rowCls + '">'
+      + '<td style="width:54px"><span class="hora">' + esc(cleanHora(r.hora)) + '</span></td>'
+      + '<td style="width:54px"><span class="bh">' + esc(r.halcon) + '</span></td>'
+      + '<td><span class="sector">' + esc(r.lugar) + '</span>' + tagHtml + '</td>'
+      + '</tr>';
+  }).join("");
+
+  const distTable = dist.length
+    ? '<table class="tbl"><thead><tr><th style="width:52px">Halcón</th><th>Sector</th><th style="width:36%">Agentes</th></tr></thead><tbody>' + distRows + '</tbody></table>'
+    : '<div class="empty">Sin unidades asignadas</div>';
+
+  const opsSection = activeTab !== "ALL"
+    ? '<div class="sec ops">'
+        + '<div class="sec-hdr"><span class="sec-ico">📍</span>Operativos programados</div>'
+        + (ops.length
+            ? '<table class="tbl"><thead><tr><th style="width:54px">Hora</th><th style="width:54px">Halcón</th><th>Lugar</th></tr></thead><tbody>' + opsRows + '</tbody></table>'
+            : '<div class="empty">Sin operativos programados</div>')
+        + '</div>'
+        + '<div class="sec fuel">'
+        + '<div class="sec-hdr"><span class="sec-ico">⛽</span>Recargas</div>'
+        + (fuel.length
+            ? '<table class="tbl"><thead><tr><th style="width:54px">Hora</th><th style="width:54px">Halcón</th><th>Lugar</th></tr></thead><tbody>' + fuelRows + '</tbody></table>'
+            : '<div class="empty">Sin recargas programadas</div>')
+        + '</div>'
+    : "";
+
+  const card = document.createElement("div");
+  card.className = "cia";
+  card.innerHTML =
+    '<div class="cia-hdr">'
+      + '<div class="cia-num">' + id + '</div>'
+      + '<div class="cia-info">'
+        + '<div class="cia-name">Compañía ' + id + '</div>'
+        + '<div class="cia-sub">Unidad Operativa</div>'
+      + '</div>'
+      + '<div class="cia-pill">' + dist.length + ' móviles</div>'
+    + '</div>'
+    + '<div class="sec dist">'
+      + '<div class="sec-hdr"><span class="sec-ico">🚓</span>Distribución operativa</div>'
+      + distTable
+    + '</div>'
+    + opsSection;
+
+  return card;
+}
+
+/* ══════════════════════════════════════════════
+   HELPER
+══════════════════════════════════════════════ */
+function esc(s) {
+  return String(s||"")
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+/* ══════════════════════════════════════════════
+   ARRANQUE
+══════════════════════════════════════════════ */
+buildTabs();
+fetchData();
+setInterval(fetchData, POLL_MS);
+</script>
+</body>
+</html>
